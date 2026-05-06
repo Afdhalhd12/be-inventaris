@@ -54,22 +54,36 @@ module.exports = {
 
     getItem: async (req, res) => {
         try {
+            const { page, limit } = req.query;
+            const offset = (Number(page) - 1) * Number(limit);
             // req.query : ambil params di postman/ambil data acuan untuk search/sort
             // sortBy -> mengurutkan berdasarkan field apa
             // order : ASC/DESC, opsi pengututan
             const { name, sortBy, order } = req.query
 
-            const items = await Item.findAll({
+            const { count, rows } = await Item.findAndCountAll({
                 where: name ? {
                     name: {
                         [Op.like]: `%${name}%` //mencari yang mirip
                     }
-                } : {}, //Cari berdasarkan field name di db dari name req.query
+                } : {},
+                offset: Number(offset),
+                limit: Number(limit),
+
+
+                //Cari berdasarkan field name di db dari name req.query
                 // kalau di params postman ada sortby order, jalannin pengurutan, klo gaada pake default. misal sortBy wn order DESC
                 order: sortBy && order ? [[sortBy, order]] : []
             });
+            const formatPagination = {
+                data: rows, //data yang dimunculkan
+                limit: limit,
+                rows: (Number(offset) + 1) + "-" + (Number(offset) + rows.length),
+                total: count, //jumlah data keseluruhan
+                page: page, //sedang di halaman ke berapa
+            }
 
-            return res.status(200).json(response(201, 'Success', items));
+            return res.status(200).json(response(201, 'Success', formatPagination));
         } catch (error) {
             return res.status(500).json(response(500, 'Serverr Error', error.message));
         }
@@ -151,25 +165,25 @@ module.exports = {
         }
     },
 
-    deleteItem : async (req, res) => {
-        try{
-            const {id} = req.params;
+    deleteItem: async (req, res) => {
+        try {
+            const { id } = req.params;
             const item = await Item.findByPk(id);
-             const imageName = item.getDataValue('image');
-                // Karena image udah diganti jadi link di getter model di ambil yang aslinya pake getDataValue
-                // Cari image ke folder uploads
-                const filePath = path.join(__dirname, '../uploads', imageName);
-                //cek jika file ada di folder tersebut
-                if (fs.existsSync(filePath)) {
-                    // hapus file
-                    fs.unlinkSync(filePath);
-                }
+            const imageName = item.getDataValue('image');
+            // Karena image udah diganti jadi link di getter model di ambil yang aslinya pake getDataValue
+            // Cari image ke folder uploads
+            const filePath = path.join(__dirname, '../uploads', imageName);
+            //cek jika file ada di folder tersebut
+            if (fs.existsSync(filePath)) {
+                // hapus file
+                fs.unlinkSync(filePath);
+            }
             const deleteProcess = await Item.destroy({
-                where: {id : id}
+                where: { id: id }
             });
-            return res.status(200).json(response(200,'deleted'));
-        }catch (error){
-             return res.status(500).json(response(500, "Response error", error.message))
+            return res.status(200).json(response(200, 'deleted'));
+        } catch (error) {
+            return res.status(500).json(response(500, "Response error", error.message))
         }
     }
 }

@@ -5,5 +5,6 @@ const upload = require('../middleware/upload')
 const loanController = require('../controllers/loan.controller')
 
 router.post('/', upload.none(), loanController.createLoan)
+router.get('/', loanController.getLoans)
 
 module.exports = router
